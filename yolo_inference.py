@@ -50,8 +50,18 @@ def quality_candidate(metrics: dict[str, float], baseline: dict[str, float] | No
     if baseline is None:
         return False, []
     reasons: list[str] = []
-    if metrics["brightness"] < 15 or metrics["brightness"] > 245:
+    hard_black_or_white = metrics["brightness"] < 15 or metrics["brightness"] > 245
+    if hard_black_or_white:
         reasons.append("extreme_brightness")
+    # A naturally plain wall has little variance, texture, and edge content.
+    # Do not call it occluded merely because those values are low.
+    low_information_baseline = (
+        baseline["variance"] < 20
+        or baseline["edge_ratio"] < 0.01
+        or baseline["entropy"] < 2
+    )
+    if low_information_baseline and not hard_black_or_white:
+        return False, []
     if baseline["variance"] > 20 and metrics["variance"] < baseline["variance"] * 0.35:
         reasons.append("low_variance")
     if baseline["sharpness"] > 10 and metrics["sharpness"] < baseline["sharpness"] * 0.20:
