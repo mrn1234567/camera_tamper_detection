@@ -89,6 +89,41 @@ python yolo_inference.py --source 0 --weights runs/detect/train/weights/best.pt
 
 遮挡报警延迟现在按时间计算：默认需要持续遮挡约 5 秒才报警。YOLO 模式可通过 `--alarm-seconds` 调整，例如 `--alarm-seconds 8`。
 
+## 专用“正常/遮挡”分类模型
+
+如果需要区分“人进入画面”和“镜头真的被遮挡”，建议使用分类模型。分类模型需要现场数据，目录结构如下：
+
+```text
+datasets/occlusion_classifier/
+├─ train/
+│  ├─ normal/
+│  └─ occluded/
+└─ val/
+   ├─ normal/
+   └─ occluded/
+```
+
+采集数据示例（分别采集正常画面和遮挡画面）：
+
+```powershell
+python collect_classifier_data.py --label normal
+python collect_classifier_data.py --label occluded
+```
+
+采集后请将图片分成 `train` 和 `val`，每类建议至少准备 500 张，且包含不同光照、人物位置和遮挡方式。训练模型：
+
+```powershell
+python train_occlusion_classifier.py --data datasets/occlusion_classifier
+```
+
+使用训练好的模型实时检测：
+
+```powershell
+python occlusion_classifier_inference.py --weights runs/classify/camera_occlusion_classifier/weights/best.pt
+```
+
+只有分类结果为 `occluded` 且置信度达到 0.75，并连续持续 5 秒，才会弹出报警。
+
 如果要先单独确认弹窗本身可用，可在项目目录执行：
 
 ```powershell
