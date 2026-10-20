@@ -50,7 +50,11 @@ def quality_candidate(metrics: dict[str, float], baseline: dict[str, float] | No
     if baseline is None:
         return False, []
     reasons: list[str] = []
-    hard_black_or_white = metrics["brightness"] < 15 or metrics["brightness"] > 245
+    brightness_shift = abs(metrics["brightness"] - baseline["brightness"]) / (baseline["brightness"] + 1.0)
+    hard_black_or_white = (
+        (metrics["brightness"] < 15 or metrics["brightness"] > 245)
+        and brightness_shift > 0.25
+    )
     if hard_black_or_white:
         reasons.append("extreme_brightness")
     # A naturally plain wall has little variance, texture, and edge content.
