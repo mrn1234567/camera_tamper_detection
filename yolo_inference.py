@@ -132,6 +132,7 @@ def main() -> None:
     previous_status = camera_status
     recent_status = deque(maxlen=5)
     frame_no = 0
+    previous_gray: np.ndarray | None = None
     abnormal_seconds = 0.0
     last_frame_time = time.monotonic()
     alarm_popup = CameraAlarmPopup()
@@ -148,6 +149,13 @@ def main() -> None:
             elapsed = min(max(current_time - last_frame_time, 0.0), 1.0)
             last_frame_time = current_time
             metrics = image_metrics(frame)
+            current_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_delta = (
+                float(np.mean(cv2.absdiff(current_gray, previous_gray)))
+                if previous_gray is not None
+                else 0.0
+            )
+            previous_gray = current_gray
             if frame_no <= args.warmup:
                 baseline_samples.append(metrics)
             elif baseline is None and baseline_samples:
@@ -164,6 +172,11 @@ def main() -> None:
                     custom_occlusion |= int(cls_id) in occlusion_ids
 
             quality_bad, reasons = quality_candidate(metrics, baseline)
+            # A motionless scene must not become an occlusion solely because
+            # of small edge/codec differences between frames.
+            if frame_delta < 1.5 and metrics["brightness"] >= 15 and metrics["brightness"] <= 245:
+                quality_bad = False
+                reasons = []
             anomaly_candidate = custom_occlusion or quality_bad
             recent_status.append(int(anomaly_candidate))
             # Require 4 of the last 5 frames to agree before accumulating an
