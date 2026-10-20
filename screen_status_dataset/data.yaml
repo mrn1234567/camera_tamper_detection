@@ -1,0 +1,5 @@
+path: "C:/Users/AAA/Documents/ChatGPT/ai边缘算法盒子/screen_status_dataset"
+train: images/train
+val: images/val
+test: images/test
+names: [normal, occluded, blurred, black_screen]
