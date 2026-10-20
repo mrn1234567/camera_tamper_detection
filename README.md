@@ -87,6 +87,8 @@ python yolo_inference.py --source 0 --weights runs/detect/train/weights/best.pt
 
 为减少测试阶段的误报，当前实现要求异常在连续多帧内稳定出现才报警；单帧模糊、短暂曝光变化和运动噪声会被过滤，正常画面的亮度变化也会缓慢更新到参考基线。
 
+遮挡报警延迟现在按时间计算：默认需要持续遮挡约 5 秒才报警。YOLO 模式可通过 `--alarm-seconds` 调整，例如 `--alarm-seconds 8`。
+
 如果要先单独确认弹窗本身可用，可在项目目录执行：
 
 ```powershell

@@ -87,6 +87,7 @@ def main() -> None:
     parser.add_argument("--warmup", type=int, default=60, help="normal frames used for the quality baseline")
     parser.add_argument("--abnormal-confirm", type=int, default=6)
     parser.add_argument("--recovery-confirm", type=int, default=10)
+    parser.add_argument("--alarm-seconds", type=float, default=5.0, help="持续遮挡多少秒后报警")
     parser.add_argument(
         "--test-alarm",
         action="store_true",
@@ -131,6 +132,8 @@ def main() -> None:
     previous_status = camera_status
     recent_status = deque(maxlen=5)
     frame_no = 0
+    abnormal_seconds = 0.0
+    last_frame_time = time.monotonic()
     alarm_popup = CameraAlarmPopup()
     print("开始 YOLO 摄像头推理，按 q 退出。camera_status=1 正常，0 疑似遮挡/异常。")
 
@@ -141,6 +144,9 @@ def main() -> None:
                 print("视频流读取结束或摄像头断开")
                 break
             frame_no += 1
+            current_time = time.monotonic()
+            elapsed = min(max(current_time - last_frame_time, 0.0), 1.0)
+            last_frame_time = current_time
             metrics = image_metrics(frame)
             if frame_no <= args.warmup:
                 baseline_samples.append(metrics)
@@ -166,11 +172,13 @@ def main() -> None:
             stable_anomaly = sum(recent_status) >= 4
             if stable_anomaly:
                 abnormal_count += 1
+                abnormal_seconds += elapsed
                 recovery_count = 0
             else:
                 recovery_count += 1
                 abnormal_count = 0
-            if camera_status == 1 and abnormal_count >= args.abnormal_confirm:
+                abnormal_seconds = 0.0
+            if camera_status == 1 and abnormal_seconds >= args.alarm_seconds:
                 camera_status = 0
             elif camera_status == 0 and recovery_count >= args.recovery_confirm:
                 camera_status = 1
