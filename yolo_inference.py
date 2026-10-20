@@ -85,7 +85,7 @@ def main() -> None:
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--warmup", type=int, default=60, help="normal frames used for the quality baseline")
-    parser.add_argument("--abnormal-confirm", type=int, default=5)
+    parser.add_argument("--abnormal-confirm", type=int, default=6)
     parser.add_argument("--recovery-confirm", type=int, default=10)
     parser.add_argument(
         "--test-alarm",
@@ -160,12 +160,16 @@ def main() -> None:
             quality_bad, reasons = quality_candidate(metrics, baseline)
             anomaly_candidate = custom_occlusion or quality_bad
             recent_status.append(int(anomaly_candidate))
-            if anomaly_candidate:
+            # Require 4 of the last 5 frames to agree before accumulating an
+            # alarm. This filters single-frame blur, exposure changes, and
+            # detector jitter during testing.
+            stable_anomaly = sum(recent_status) >= 4
+            if stable_anomaly:
                 abnormal_count += 1
                 recovery_count = 0
             else:
                 recovery_count += 1
-                abnormal_count = max(0, abnormal_count - 1)
+                abnormal_count = 0
             if camera_status == 1 and abnormal_count >= args.abnormal_confirm:
                 camera_status = 0
             elif camera_status == 0 and recovery_count >= args.recovery_confirm:
@@ -178,6 +182,11 @@ def main() -> None:
                     + ("摄像头正在被遮挡" if camera_status == 0 else "摄像头已恢复正常")
                 )
                 previous_status = camera_status
+
+            # Slowly follow normal lighting changes without learning an alarm.
+            if baseline is not None and camera_status == 1 and not quality_bad:
+                for key in baseline:
+                    baseline[key] = 0.995 * baseline[key] + 0.005 * metrics[key]
 
             color = (0, 0, 255) if camera_status == 0 else (0, 180, 0)
             cv2.putText(frame, f"camera_status: {camera_status}", (15, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)

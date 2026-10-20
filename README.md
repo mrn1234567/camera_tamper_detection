@@ -85,6 +85,8 @@ python yolo_inference.py --source 0 --weights runs/detect/train/weights/best.pt
 
 检测循环还会同步显示 Windows 报警弹窗：遮挡确认后弹出“摄像头正在被遮挡”，恢复确认后自动消失。弹窗由 `alarm_popup.py` 提供，不会阻塞 OpenCV 视频循环。
 
+为减少测试阶段的误报，当前实现要求异常在连续多帧内稳定出现才报警；单帧模糊、短暂曝光变化和运动噪声会被过滤，正常画面的亮度变化也会缓慢更新到参考基线。
+
 如果要先单独确认弹窗本身可用，可在项目目录执行：
 
 ```powershell
